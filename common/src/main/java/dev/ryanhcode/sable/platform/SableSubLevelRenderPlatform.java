@@ -34,7 +34,12 @@ public interface SableSubLevelRenderPlatform {
             int packedOverlay,
             @Nullable RenderType renderType);
 
-    List<RenderType> getRenderLayers(BlockState state);
+    List<RenderType> getRenderLayers(
+            final SingleBlockSubLevelWrapper blockAndTintGetter,
+            final BakedModel bakedModel,
+            final BlockState blockState,
+            final BlockPos pos,
+            final RandomSource randomSource);
 
     void tryAddFlywheelVisual(BlockEntity blockEntity);
 }

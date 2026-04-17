@@ -45,10 +45,6 @@ public class VanillaSingleSubLevelRenderData implements SubLevelRenderData {
      * The sub-level this renderer is for
      */
     private final ClientSubLevel subLevel;
-    /**
-     * The cached render type for single block rendering
-     */
-    private List<RenderType> singleRenderType = null;
 
     /**
      * The cached block state for single block rendering
@@ -59,6 +55,11 @@ public class VanillaSingleSubLevelRenderData implements SubLevelRenderData {
      * The cached block position for single block rendering
      */
     private BlockPos singleBlockPos = null;
+
+    /**
+     * The cached block seed for single block rendering
+     */
+    private long singleBlockSeed = 42L;
 
     /**
      * The cached block entity position for single block rendering
@@ -106,17 +107,27 @@ public class VanillaSingleSubLevelRenderData implements SubLevelRenderData {
 
     public void renderSingleBlock(final RenderType layer, final VertexConsumer consumer, final Matrix4f modelView, final double camX, final double camY, final double camZ) {
         final Minecraft client = Minecraft.getInstance();
-        if (this.singleRenderType == null || this.singleBlockState.isAir()) {
+        if (this.singleBlockState.isAir()) {
             this.rebuild();
         }
 
-        if (this.singleBlockState.getRenderShape() != RenderShape.MODEL || !this.singleRenderType.contains(layer)) {
+        if (this.singleBlockState.getRenderShape() != RenderShape.MODEL) {
+            return;
+        }
+
+        final BakedModel bakedModel = client.getBlockRenderer().getBlockModel(this.singleBlockState);
+        final Pose3dc renderPose = this.subLevel.renderPose();
+        final Vector3dc renderPos = renderPose.position();
+        LEVEL_WRAPPER.setup(this.subLevel.getLevel(), renderPos.x(), renderPos.y(), renderPos.z(), this.singleBlockPos, this.singleBlockState);
+
+        RANDOM.setSeed(this.singleBlockSeed);
+        final List<RenderType> renderLayers = SableSubLevelRenderPlatform.INSTANCE.getRenderLayers(LEVEL_WRAPPER, bakedModel, this.singleBlockState, this.singleBlockPos, RANDOM);
+        if (!renderLayers.contains(layer)) {
+            LEVEL_WRAPPER.clear();
             return;
         }
 
         final PoseStack stack = new PoseStack();
-        final Pose3dc renderPose = this.subLevel.renderPose();
-        final Vector3dc renderPos = renderPose.position();
 
         // These NEED to be here because renderPos is mutated below
         final double renderX = renderPos.x();
@@ -138,18 +149,12 @@ public class VanillaSingleSubLevelRenderData implements SubLevelRenderData {
             transform.normal(stack.last().normal());
         }
 
-        final BlockRenderDispatcher blockRenderer = client.getBlockRenderer();
-        final BakedModel bakedModel = blockRenderer.getBlockModel(this.singleBlockState);
-        final ClientLevel level = this.subLevel.getLevel();
-        final long seed = this.singleBlockState.getSeed(this.singleBlockPos);
-
-        LEVEL_WRAPPER.setup(level, renderX, renderY, renderZ, this.singleBlockPos, this.singleBlockState);
-        SableSubLevelRenderPlatform.INSTANCE.tesselateBlock(LEVEL_WRAPPER, bakedModel, this.singleBlockState, this.singleBlockPos, stack, consumer, RANDOM, seed, OverlayTexture.NO_OVERLAY, layer);
+        SableSubLevelRenderPlatform.INSTANCE.tesselateBlock(LEVEL_WRAPPER, bakedModel, this.singleBlockState, this.singleBlockPos, stack, consumer, RANDOM, this.singleBlockSeed, OverlayTexture.NO_OVERLAY, layer);
         LEVEL_WRAPPER.clear();
     }
 
     public @Nullable BlockEntity getRenderBlockEntity() {
-        if (this.singleRenderType == null || this.singleBlockState.isAir()) {
+        if (this.singleBlockState.isAir()) {
             this.rebuild();
         }
         return this.singleBlockEntity;
@@ -162,9 +167,9 @@ public class VanillaSingleSubLevelRenderData implements SubLevelRenderData {
 
         final BlockState blockState = this.subLevel.getLevel().getBlockState(pos);
 
-        this.singleRenderType = SableSubLevelRenderPlatform.INSTANCE.getRenderLayers(blockState);
         this.singleBlockState = blockState;
         this.singleBlockPos = pos;
+        this.singleBlockSeed = blockState.getSeed(pos);
 
         this.handleBlockEntity(blockState.hasBlockEntity() ? this.subLevel.getLevel().getBlockEntity(pos) : null);
 

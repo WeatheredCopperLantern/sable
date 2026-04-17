@@ -35,8 +35,8 @@ public class SableSubLevelRenderPlatformImpl implements SableSubLevelRenderPlatf
     }
 
     @Override
-    public List<RenderType> getRenderLayers(final BlockState state) {
-        return ItemBlockRenderTypes.getRenderLayers(state).asList();
+    public List<RenderType> getRenderLayers(final SingleBlockSubLevelWrapper blockAndTintGetter, final BakedModel bakedModel, final BlockState blockState, final BlockPos pos, final RandomSource randomSource) {
+        return bakedModel.getRenderTypes(blockState, randomSource, blockAndTintGetter.getModelData(pos)).asList();
     }
 
     @Override

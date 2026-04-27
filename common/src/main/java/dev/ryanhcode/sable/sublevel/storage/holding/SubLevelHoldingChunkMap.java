@@ -332,8 +332,8 @@ public class SubLevelHoldingChunkMap implements AutoCloseable {
                 final MinecraftServer server = this.level.getServer();
                 if (server instanceof final SableToastableServer toastable) {
                     toastable.sable$reportSubLevelSaveFailure(data);
-                    return null;
                 }
+                return null;
             }
 
             if (VERBOSE) {
@@ -407,7 +407,7 @@ public class SubLevelHoldingChunkMap implements AutoCloseable {
      * @param create   whether to create a new holding chunk if it doesn't exist
      */
     @Contract("_, true -> !null")
-    private SubLevelHoldingChunk getOrLoadHoldingChunk(final ChunkPos chunkPos, final boolean create) {
+    private @Nullable SubLevelHoldingChunk getOrLoadHoldingChunk(final ChunkPos chunkPos, final boolean create) {
         final long longKey = chunkPos.toLong();
         final SubLevelHoldingChunk holdingChunk = this.loadedHoldingChunks.get(longKey);
 
@@ -522,9 +522,14 @@ public class SubLevelHoldingChunkMap implements AutoCloseable {
     }
 
     public void moveToUnloaded(final ServerSubLevel subLevel, final ChunkPos pos) {
+        // When sub-levels unload there is no logs indicating that it unloaded. This then leads to people
+        // making issues on the tracker, so always print this message saying the sub-level was unloaded
         if (VERBOSE) {
             Sable.LOGGER.info("Sub-level {} with pointer {} detected unloaded chunk, moving to {}", subLevel, subLevel.getLastSerializationPointer(), pos);
+        } else {
+            Sable.LOGGER.info("Sub-level {} with pointer {} detected unloaded chunk, unloading", subLevel.getUniqueId(), subLevel.getLastSerializationPointer());
         }
+
         final Collection<ServerSubLevel> chain = SubLevelHelper.getLoadingDependencyChain(subLevel);
         final List<UUID> uuids = chain.stream().map(SubLevel::getUniqueId).toList();
 

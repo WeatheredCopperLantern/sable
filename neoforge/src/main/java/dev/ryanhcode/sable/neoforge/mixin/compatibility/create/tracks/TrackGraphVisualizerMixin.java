@@ -19,6 +19,7 @@ public class TrackGraphVisualizerMixin {
     @WrapOperation(method = "debugViewGraph", at = @At(value = "FIELD", target = "Lcom/simibubi/create/content/trains/graph/TrackGraphBounds;box:Lnet/minecraft/world/phys/AABB;"))
     private static AABB debugViewGraph(final TrackGraphBounds instance,
                                        final Operation<AABB> original) {
+        if(instance.box == null) return null;
         final Level level = Minecraft.getInstance().level;
         if (level == null) return original.call(instance);
 

@@ -1,6 +1,7 @@
 package dev.ryanhcode.sable.mixin.entity.entities_in_blocks;
 
 import dev.ryanhcode.sable.Sable;
+import dev.ryanhcode.sable.api.SubLevelHelper;
 import dev.ryanhcode.sable.companion.math.BoundingBox3d;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.CrashReport;
@@ -36,12 +37,11 @@ public abstract class EntityMixin {
     protected void checkInsideBlocks(final CallbackInfo ci) {
         final AABB bounds = this.getBoundingBox();
 
-        final BoundingBox3d localBounds = new BoundingBox3d(bounds);
         for (final SubLevel intersecting : Sable.HELPER.getAllIntersecting(this.level, new BoundingBox3d(bounds))) {
-            localBounds.set(bounds);
-            localBounds.transformInverse(intersecting.logicalPose(), localBounds);
-            final BlockPos minPos = BlockPos.containing(localBounds.minX + 1.0E-7, localBounds.minY + 1.0E-7, localBounds.minZ + 1.0E-7);
-            final BlockPos maxPos = BlockPos.containing(localBounds.maxX - 1.0E-7, localBounds.maxY - 1.0E-7, localBounds.maxZ - 1.0E-7);
+            SubLevelHelper.pushEntityLocal(intersecting, (Entity) (Object) this);
+
+            final BlockPos minPos = BlockPos.containing(this.getBoundingBox().minX + 1.0E-7, this.getBoundingBox().minY + 1.0E-7, this.getBoundingBox().minZ + 1.0E-7);
+            final BlockPos maxPos = BlockPos.containing(this.getBoundingBox().maxX - 1.0E-7, this.getBoundingBox().maxY - 1.0E-7, this.getBoundingBox().maxZ - 1.0E-7);
 
             if (this.level.hasChunksAt(minPos, maxPos)) {
                 final BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
@@ -50,6 +50,7 @@ public abstract class EntityMixin {
                     for (int j = minPos.getY(); j <= maxPos.getY(); j++) {
                         for (int k = minPos.getZ(); k <= maxPos.getZ(); k++) {
                             if (!this.isAlive()) {
+                                SubLevelHelper.popEntityLocal(intersecting, (Entity) (Object) this);
                                 return;
                             }
 
@@ -60,6 +61,7 @@ public abstract class EntityMixin {
                                 blockState.entityInside(this.level, mutableBlockPos, (Entity) (Object) this);
                                 this.onInsideBlock(blockState);
                             } catch (final Throwable var12) {
+                                SubLevelHelper.popEntityLocal(intersecting, (Entity) (Object) this);
                                 final CrashReport crashReport = CrashReport.forThrowable(var12, "Colliding entity with block");
                                 final CrashReportCategory crashReportCategory = crashReport.addCategory("Block being collided with");
                                 CrashReportCategory.populateBlockDetails(crashReportCategory, this.level, mutableBlockPos, blockState);
@@ -69,6 +71,8 @@ public abstract class EntityMixin {
                     }
                 }
             }
+
+            SubLevelHelper.popEntityLocal(intersecting, (Entity) (Object) this);
         }
     }
 }
